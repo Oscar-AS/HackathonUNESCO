@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Vera — Real-Time Fact Checker | Interactive Demo</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy:   #003E80;
+    --blue:   #0077C8;
+    --gold:   #F5A623;
+    --green:  #27AE60;
+    --red:    #C0392B;
+    --amber:  #E6A817;
+    --gray:   #6B7280;
+    --light:  #F0F4FA;
+    --dark:   #1A1A2E;
+    --white:  #ffffff;
+    --soft-blue:  #EBF4FF;
+    --soft-green: #E8F8EE;
+    --soft-red:   #FDECEA;
+    --soft-gold:  #FFF8E1;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--light);
+    color: var(--dark);
+    min-height: 100vh;
+  }
+
+  /* HERO */
+  .hero {
+    background: linear-gradient(135deg, var(--navy) 0%, #0056a3 100%);
+    padding: 48px 24px 40px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 70% 0%, var(--blue) 0%, transparent 60%);
+    opacity: .3;
+  }
+  .hero-tag {
+    display: inline-block;
+    background: rgba(255,255,255,.15);
+    color: rgba(255,255,255,.9);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 5px 16px;
+    border-radius: 20px;
+    margin-bottom: 20px;
+    position: relative;
+  }
+  .hero h1 {
+    font-size: clamp(52px, 12vw, 80px);
+    font-weight: 900;
+    color: #fff;
+    letter-spacing: 8px;
+    line-height: 1;
+    position: relative;
+  }
+  .hero h1 span { color: var(--gold); }
+  .hero-sub {
+    color: rgba(255,255,255,.75);
+    font-size: 15px;
+    max-width: 500px;
+    margin: 12px auto 24px;
+    line-height: 1.6;
+    position: relative;
+  }
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,.1);
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 8px;
+    padding: 8px 18px;
+    color: rgba(255,255,255,.85);
+    font-size: 12px;
+    position: relative;
+  }
+  .hero-badge .dot {
+    width: 7px; height: 7px;
+    background: var(--gold);
+    border-radius: 50%;
+    animation: blink 1.4s infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  /* MAIN */
+  .main { max-width: 760px; margin: 0 auto; padding: 36px 20px 60px; }
+
+  /* SECTION LABEL */
+  .label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gray);
+    margin-bottom: 14px;
+  }
+
+  /* URL BAR */
+  .url-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #fff;
+    border: 1.5px solid #e0e7ef;
+    border-radius: 12px;
+    padding: 10px 16px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    color: var(--gray);
+  }
+  .url-bar .lock { color: var(--green); font-size: 15px; }
+  .url-bar .url-text { flex: 1; font-size: 13px; color: var(--dark); }
+
+  /* SCENARIO BUTTONS */
+  .scenarios { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+  .sc-btn {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    background: #fff;
+    border: 1.5px solid #e0e7ef;
+    border-radius: 14px;
+    padding: 14px 16px;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color .15s, box-shadow .15s, transform .1s;
+    width: 100%;
+  }
+  .sc-btn:hover { border-color: var(--blue); box-shadow: 0 4px 16px rgba(0,119,200,.12); transform: translateY(-1px); }
+  .sc-btn.active { border-color: var(--blue); background: var(--soft-blue); box-shadow: 0 4px 20px rgba(0,119,200,.18); }
+  .sc-icon { font-size: 26px; flex-shrink: 0; margin-top: 2px; }
+  .sc-body { flex: 1; }
+  .sc-body strong { display: block; font-size: 14px; font-weight: 600; color: var(--dark); margin-bottom: 3px; }
+  .sc-body span { font-size: 12px; color: var(--gray); }
+  .sc-tag {
+    font-size: 10px; font-weight: 700;
+    padding: 3px 10px; border-radius: 6px;
+    flex-shrink: 0; align-self: flex-start; margin-top: 2px;
+  }
+  .tag-fake    { background: var(--soft-red);   color: var(--red); }
+  .tag-dispute { background: var(--soft-gold);  color: #854f0b; }
+  .tag-safe    { background: var(--soft-green); color: #1a5c38; }
+  .tag-none    { background: var(--light);      color: var(--gray); }
+
+  /* ANALYZE BUTTON */
+  .btn-analyze {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(135deg, var(--navy), var(--blue));
+    color: #fff;
+    border: none;
+    border-radius: 14px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: .5px;
+    transition: opacity .15s, transform .1s;
+    margin-bottom: 28px;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+  }
+  .btn-analyze:hover:not(:disabled) { opacity: .92; transform: translateY(-1px); }
+  .btn-analyze:active { transform: translateY(0); }
+  .btn-analyze:disabled { background: #9ca3af; cursor: not-allowed; transform: none; }
+
+  /* RESULT BOX */
+  .result-box {
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1.5px solid #e0e7ef;
+    margin-bottom: 32px;
+    display: none;
+    animation: fadeIn .4s ease;
+  }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+  .result-box.show { display: block; }
+
+  .vera-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 14px 18px;
+  }
+  .vera-banner.safe    { background: linear-gradient(135deg, #1a7a4a, #27ae60); }
+  .vera-banner.warning { background: linear-gradient(135deg, #c17f00, #e6a817); }
+  .vera-banner.danger  { background: linear-gradient(135deg, #8b0000, #c0392b); }
+  .vera-banner.unverified { background: linear-gradient(135deg, #2c3e50, #4a6278); }
+  .vera-banner.loading { background: linear-gradient(135deg, var(--navy), var(--blue)); }
+
+  .vb-logo {
+    font-weight: 900;
+    font-size: 13px;
+    letter-spacing: 2px;
+    color: #fff;
+    background: rgba(255,255,255,.2);
+    padding: 3px 8px;
+    border-radius: 6px;
+    flex-shrink: 0;
+  }
+  .vb-emoji { font-size: 22px; flex-shrink: 0; }
+  .vb-text { flex: 1; }
+  .vb-label { font-weight: 700; font-size: 15px; color: #fff; display: block; }
+  .vb-sub { font-size: 10px; color: rgba(255,255,255,.7); text-transform: uppercase; letter-spacing: .5px; }
+
+  .claims-list {
+    background: #fff;
+    padding: 14px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .claims-list .no-claims {
+    font-size: 13px;
+    color: var(--gray);
+    text-align: center;
+    padding: 8px 0;
+    font-style: italic;
+  }
+  .claim-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: var(--light);
+  }
+  .claim-text {
+    font-size: 12px;
+    color: var(--dark);
+    flex: 1;
+    min-width: 0;
+  }
+  .claim-rating {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 5px;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .r-false  { background: var(--soft-red);   color: var(--red); }
+  .r-true   { background: var(--soft-green); color: #1a5c38; }
+  .r-mixed  { background: var(--soft-gold);  color: #854f0b; }
+  .r-none   { background: var(--light);      color: var(--gray); border: 1px solid #e0e7ef; }
+  .claim-src {
+    font-size: 11px;
+    color: var(--blue);
+    text-decoration: none;
+    flex-shrink: 0;
+    font-weight: 600;
+  }
+  .claim-src:hover { text-decoration: underline; }
+
+  /* STATS GRID */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 32px;
+  }
+  .stat-card {
+    background: #fff;
+    border: 1.5px solid #e0e7ef;
+    border-radius: 14px;
+    padding: 18px 12px;
+    text-align: center;
+  }
+  .stat-num {
+    font-size: 28px;
+    font-weight: 900;
+    color: var(--navy);
+    display: block;
+    line-height: 1;
+  }
+  .stat-lbl {
+    font-size: 10px;
+    color: var(--gray);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    margin-top: 6px;
+    display: block;
+  }
+
+  /* HOW IT WORKS */
+  .how-box {
+    background: #fff;
+    border: 1.5px solid #e0e7ef;
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 32px;
+  }
+  .how-box h3 { font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 18px; text-transform: uppercase; letter-spacing: 1px; }
+  .steps { display: flex; flex-direction: column; gap: 14px; }
+  .step { display: flex; gap: 14px; align-items: flex-start; }
+  .step-num {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--navy); color: #fff;
+    font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .step-body strong { display: block; font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+  .step-body span { font-size: 12px; color: var(--gray); line-height: 1.5; }
+
+  /* TEAM */
+  .team-box {
+    background: var(--navy);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 32px;
+    text-align: center;
+  }
+  .team-box h3 { color: var(--gold); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 16px; }
+  .team-members { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; }
+  .member-pill {
+    background: rgba(255,255,255,.12);
+    color: #fff;
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .member-pill span { color: var(--gold); font-size: 10px; display: block; margin-top: 2px; }
+
+  /* FOOTER */
+  .demo-footer {
+    text-align: center;
+    font-size: 11px;
+    color: var(--gray);
+    line-height: 1.7;
+    padding-bottom: 20px;
+  }
+  .demo-footer a { color: var(--blue); text-decoration: none; font-weight: 600; }
+  .demo-footer a:hover { text-decoration: underline; }
+
+  /* LOADING DOTS */
+  .dots { animation: dots 1.2s infinite; }
+  @keyframes dots { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+  /* SPINNER */
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 600px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .hero h1 { letter-spacing: 4px; }
+    .sc-btn { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-tag">UNESCO Youth Hackathon 2026 — Interactive Demo</div>
+  <h1>VER<span>A</span></h1>
+  <p class="hero-sub">Truth doesn't wait. Neither does Vera.<br/>Install once. Every lie, challenged. Every fact, verified. Automatically.</p>
+  <div class="hero-badge">
+    <div class="dot"></div>
+    Live demo &nbsp;·&nbsp; Powered by Google Fact Check Tools &nbsp;·&nbsp; 100+ organizations worldwide
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <p class="label">Step 1 — Pick an article to analyze</p>
+
+  <div class="url-bar">
+    <span class="lock">🔒</span>
+    <span class="url-text" id="urlDisplay">Select an article below to begin</span>
+    <span style="color:var(--gray);font-size:13px;">🌐</span>
+  </div>
+
+  <div class="scenarios">
+    <button class="sc-btn" onclick="select(0)" id="sc0">
+      <span class="sc-icon">🗳️</span>
+      <div class="sc-body">
+        <strong>"Dead people voted in the 2020 US election"</strong>
+        <span>Viral political claim — widely shared on social media</span>
+      </div>
+      <span class="sc-tag tag-fake">Fake</span>
+    </button>
+
+    <button class="sc-btn" onclick="select(1)" id="sc1">
+      <span class="sc-icon">💰</span>
+      <div class="sc-body">
+        <strong>"L'argent liquide va-t-il disparaître en 2018 ?"</strong>
+        <span>Economic prediction circulated widely in France and West Africa</span>
+      </div>
+      <span class="sc-tag tag-dispute">Disputed</span>
+    </button>
+
+    <button class="sc-btn" onclick="select(2)" id="sc2">
+      <span class="sc-icon">🌍</span>
+      <div class="sc-body">
+        <strong>"Climate change is accelerating global temperatures"</strong>
+        <span>Scientific reporting from major international media outlets</span>
+      </div>
+      <span class="sc-tag tag-safe">Reliable</span>
+    </button>
+
+    <button class="sc-btn" onclick="select(3)" id="sc3">
+      <span class="sc-icon">🤖</span>
+      <div class="sc-body">
+        <strong>"AI will replace 80% of all jobs by 2025"</strong>
+        <span>Tech prediction from unverified sources, widely reshared</span>
+      </div>
+      <span class="sc-tag tag-none">Unverified</span>
+    </button>
+  </div>
+
+  <button class="btn-analyze" id="analyzeBtn" onclick="analyze()" disabled>
+    <span id="btnIcon">⚡</span>
+    <span id="btnText">Select an article above to analyze</span>
+  </button>
+
+  <!-- RESULT -->
+  <div class="result-box" id="resultBox">
+    <div class="vera-banner loading" id="bannerBar">
+      <span class="vb-logo">VERA</span>
+      <span class="vb-emoji" id="bEmoji">⏳</span>
+      <div class="vb-text">
+        <span class="vb-label" id="bLabel">Analyzing<span class="dots">...</span></span>
+        <span class="vb-sub">Instant fact-check by Vera</span>
+      </div>
+    </div>
+    <div class="claims-list" id="claimsList"></div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <span class="stat-num">100+</span>
+      <span class="stat-lbl">Fact-checking organizations</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-num">138</span>
+      <span class="stat-lbl">Countries covered</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-num">&lt;3s</span>
+      <span class="stat-lbl">Analysis time</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-num">0</span>
+      <span class="stat-lbl">Data stored</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-num">$0</span>
+      <span class="stat-lbl">Cost to user</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-num">100+</span>
+      <span class="stat-lbl">Languages (v2)</span>
+    </div>
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <div class="how-box">
+    <h3>How Vera works</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Silent reading</strong>
+          <span>Vera extracts the article title and body text as you browse. No click needed. You keep reading.</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Anonymous query</strong>
+          <span>Only raw text is sent — no URL, no identity, no cookies, no tracking. Deleted immediately after analysis.</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>Global fact-check network</strong>
+          <span>Google Fact Check Tools cross-references 100+ verified organizations in 138 countries. Instantly.</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <strong>Verdict delivered</strong>
+          <span>A discreet banner appears with the result and clickable sources — before you share.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TEAM -->
+  <div class="team-box">
+    <h3>Built by Team Vera</h3>
+    <div class="team-members">
+      <div class="member-pill">
+        Alioune Abdou Salam Kane
+        <span>🇸🇳 Senegal</span>
+      </div>
+      <div class="member-pill">
+        Ndeye Ramatoulaye Ndoye Fall
+        <span>🇸🇳 Senegal</span>
+      </div>
+      <div class="member-pill">
+        Gandwende Judicaël Oscar Kafando
+        <span>🇧🇫 Burkina Faso</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="demo-footer">
+    Vera v1.0 prototype &nbsp;·&nbsp;
+    <a href="https://www.unesco.org/en/articles/unesco-youth-hackathon-2026" target="_blank">UNESCO Youth Hackathon 2026</a>
+    &nbsp;·&nbsp; #YouthHackathon2026<br/>
+    Theme: Play Your Part — Youth Designing the Future of Media and Information Literacy
+  </div>
+
+</div>
+
+<script>
+const SCENARIOS = [
+  {
+    url: "https://www.snopes.com/fact-check/dead-voters-2020",
+    status: "danger",
+    label: "Misinformation Detected",
+    emoji: "🚨",
+    claims: [
+      { text: "Dead people voted for Biden in the 2020 election", rating: "False", rc: "r-false", src: "PolitiFact" },
+      { text: "Thousands of dead voters cast ballots in Georgia", rating: "False", rc: "r-false", src: "Snopes" },
+      { text: "Election fraud determined the 2020 outcome", rating: "False", rc: "r-false", src: "AFP Fact Check" }
+    ]
+  },
+  {
+    url: "https://www.lemonde.fr/economie",
+    status: "warning",
+    label: "Disputed — Verify Before Sharing",
+    emoji: "⚠️",
+    claims: [
+      { text: "L'argent liquide va-t-il disparaître en 2018 ?", rating: "Faux", rc: "r-false", src: "AFP Factuel" },
+      { text: "Le bloqueur conspirationniste a écrit que Bruxelles...", rating: "C'est faux", rc: "r-false", src: "Le Monde" },
+      { text: "Des morts ont voté pour Biden", rating: "Aucune preuve", rc: "r-none", src: "AFP" }
+    ]
+  },
+  {
+    url: "https://www.bbc.com/news/science-environment",
+    status: "safe",
+    label: "Likely Reliable",
+    emoji: "✅",
+    claims: [
+      { text: "Global temperatures have risen 1.1°C since pre-industrial era", rating: "True", rc: "r-true", src: "Full Fact" },
+      { text: "2023 was the hottest year on record globally", rating: "True", rc: "r-true", src: "AFP Fact Check" },
+      { text: "Arctic ice is melting at an accelerating rate", rating: "True", rc: "r-true", src: "Climate Feedback" }
+    ]
+  },
+  {
+    url: "https://techcrunch.com/ai-jobs-prediction",
+    status: "unverified",
+    label: "No Fact-Checks Found",
+    emoji: "🔍",
+    claims: []
+  }
+];
+
+let selected = null;
+
+function select(i) {
+  selected = i;
+  document.querySelectorAll('.sc-btn').forEach((b, j) => b.classList.toggle('active', j === i));
+  document.getElementById('urlDisplay').textContent = SCENARIOS[i].url;
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = false;
+  document.getElementById('btnIcon').textContent = '⚡';
+  document.getElementById('btnText').textContent = 'Analyze with Vera';
+  document.getElementById('resultBox').classList.remove('show');
+}
+
+function analyze() {
+  if (selected === null) return;
+
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true;
+  document.getElementById('btnIcon').innerHTML = '<div class="spinner"></div>';
+  document.getElementById('btnText').textContent = 'Vera is analyzing...';
+
+  const box = document.getElementById('resultBox');
+  box.classList.add('show');
+  const bar = document.getElementById('bannerBar');
+  bar.className = 'vera-banner loading';
+  document.getElementById('bEmoji').textContent = '⏳';
+  document.getElementById('bLabel').innerHTML = 'Analyzing<span class="dots">...</span>';
+  document.getElementById('claimsList').innerHTML = '';
+
+  setTimeout(() => {
+    const s = SCENARIOS[selected];
+    bar.className = `vera-banner ${s.status}`;
+    document.getElementById('bEmoji').textContent = s.emoji;
+    document.getElementById('bLabel').textContent = s.label;
+
+    const cl = document.getElementById('claimsList');
+    if (s.claims.length === 0) {
+      cl.innerHTML = '<p class="no-claims">No existing fact-checks found for this content.<br/>Treat with caution and verify through multiple sources.</p>';
+    } else {
+      cl.innerHTML = s.claims.map(c => `
+        <div class="claim-item">
+          <span class="claim-text">${c.text}</span>
+          <span class="claim-rating ${c.rc}">${c.rating}</span>
+          <a class="claim-src" href="#" onclick="return false">Source: ${c.src} →</a>
+        </div>`).join('');
+    }
+
+    btn.disabled = false;
+    document.getElementById('btnIcon').textContent = '🔄';
+    document.getElementById('btnText').textContent = 'Analyze again';
+  }, 2400);
+}
+</script>
+</body>
+</html>
